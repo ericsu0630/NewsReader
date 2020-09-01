@@ -1,6 +1,8 @@
 package com.example.newsreader;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -18,12 +20,13 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
+    ArrayList<Story> stories = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ListView listView = findViewById(R.id.listView);
-        ArrayList<Story> stories = new ArrayList<>();
         ArrayList<String> titles = new ArrayList<>();
         DownloadArticles downloadArticles = new DownloadArticles();
 
@@ -43,7 +46,9 @@ public class MainActivity extends AppCompatActivity {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
+                Intent intent = new Intent(getApplicationContext(),WebViewActivity.class);
+                intent.putExtra("url", stories.get(position).url);
+                startActivity(intent);
             }
         });
     }
@@ -76,17 +81,21 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected ArrayList<Story> doInBackground(String... strings) {
             ArrayList<Story> stories = new ArrayList<>();
-                String json = getJSON(strings[0]);
+                String json = getJSON(strings[0]); //gets list of article IDs
+                String title, jsonUrl, contentUrl;
             try {
                 JSONArray articleIDs = new JSONArray(String.valueOf(json));
                 for(int i=0;i<20;i++){ //downloads the top ten stories out of 500 article IDs
-                    String url = "https://hacker-news.firebaseio.com/v0/item/"+articleIDs.get(i)+".json?print=pretty";
-                    json = getJSON(url);
-                    JSONObject storyData = new JSONObject(String.valueOf(json));
-                    String title = storyData.getString("title");
-                    url = storyData.getString("url");
-                    Story story = new Story(title, url); //construct a new story with article title and url
-                    stories.add(story);
+                    jsonUrl = "https://hacker-news.firebaseio.com/v0/item/"+articleIDs.get(i)+".json?print=pretty";
+                    json = getJSON(jsonUrl); //gets article data using article ID
+                    JSONObject storyData = new JSONObject(json);
+                    //if the article doesn't contain a title or url then skip it
+                    if(storyData.has("url") && storyData.has("title")){
+                        title = storyData.getString("title");
+                        contentUrl = storyData.getString("url");
+                        Story story = new Story(title, contentUrl); //construct a new story with article title and url
+                        stories.add(story);
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
