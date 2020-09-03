@@ -7,7 +7,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -48,6 +47,50 @@ public class MainActivity extends AppCompatActivity {
             Log.i("Error", "Download failed!");
         }
 
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final int pos = position;
+                if(position==titles.size()-1){ //if the last item is clicked, load more data
+                    new AsyncTask<Void, Void, Void>() {
+
+                        @Override
+                        protected void onPreExecute() {
+                            super.onPreExecute();
+                            // Guaranteed to run on the UI thread
+                            progressBar.setVisibility(View.VISIBLE);
+                            loadingSpinner.setVisibility(View.VISIBLE);
+                        }
+
+                        @Override
+                        protected Void doInBackground(Void... params) {
+                            Log.i("debug info", "Loading more items...");
+                            titles.remove(pos);
+                            loadArticles();
+                            return null;
+                        }
+
+                        @Override
+                        protected void onPostExecute(Void aVoid) {
+                            super.onPostExecute(aVoid);
+                            // Guaranteed to run on the UI thread
+                            progressBar.setVisibility(View.GONE);
+                            loadingSpinner.setVisibility(View.GONE);
+
+                        }
+
+                    }.execute();
+                    arrayAdapter.notifyDataSetChanged();
+                }else {
+                    Log.i("debug info","opening webView...");
+                    Intent intent = new Intent(getApplicationContext(), WebViewActivity.class);
+                    intent.putExtra("url", stories.get(position).url);
+                    startActivity(intent);
+                }
+
+            }
+        });
+
     }
 
     //Method that returns the JSON data retrieved from a URL
@@ -75,30 +118,36 @@ public class MainActivity extends AppCompatActivity {
     //Method to fetch the next 20 articles and add them to the listView
     public void loadArticles(){
         String title, jsonUrl, contentUrl;
+        int dupeIndex=0;
+        int badArticles=0;
         try {
             for (int i = titles.size(); i < titles.size()+20; i++) { //downloads the top 20 stories out of 500 article IDs
                 jsonUrl = "https://hacker-news.firebaseio.com/v0/item/" + articleIDs.get(i) + ".json?print=pretty";
                 String json = getJSON(jsonUrl); //gets article data using article ID
                 JSONObject storyData = new JSONObject(json);
-
                 //if the article doesn't contain a title or url then skip it
                 if (storyData.has("url") && storyData.has("title")) {
                     title = storyData.getString("title");
                     contentUrl = storyData.getString("url");
                     Story story = new Story(title, contentUrl); //construct a new story with article title and url
                     stories.add(story);
+                    if(i>1 && stories.get(i-badArticles).title.equals(stories.get(i-badArticles-1).title)){
+                        dupeIndex = i;
+                    }
+                }else{
+                    badArticles++;
                 }
                 progressBar.setProgress(i-titles.size());
+            }
+            if(dupeIndex>0) {
+                Log.i("Duplicate Removed",stories.get(dupeIndex).title);
+                stories.remove(dupeIndex);
             }
         }catch(Exception e){
             e.printStackTrace();
             Log.i("Error", "JSON handling failed");
         }
-    }
-
-    //Method to populate the listView
-    public void loadTitles(){
-        for(int i = 0; i < stories.size(); i++){
+        for(int i = titles.size(); i < stories.size(); i++){
             titles.add(stories.get(i).title);
         }
         titles.add("More stories...");
@@ -131,30 +180,8 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(ArrayList<Story> s) {
             stories = s;
             arrayAdapter.notifyDataSetChanged();
-            listView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);
             loadingSpinner.setVisibility(View.GONE);
-            loadTitles();
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                    if(position==titles.size()-1){ //if the last item is clicked, load more data
-                        Log.i("debug info","Loading more items...");
-                        titles.remove(position);
-
-                        //loadArticles()
-
-                        arrayAdapter.notifyDataSetChanged();
-                    }else {
-                        Log.i("debug info","opening webView...");
-                        Intent intent = new Intent(getApplicationContext(), WebViewActivity.class);
-                        intent.putExtra("url", stories.get(position).url);
-                        startActivity(intent);
-                    }
-
-                }
-            });
         }
     }
 
