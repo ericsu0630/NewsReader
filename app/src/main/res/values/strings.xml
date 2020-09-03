@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">News Reader</string>
+    <string name="loading">Loading…</string>
+    <string name="refresh">Refresh</string>
 </resources>

@@ -11,6 +11,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.InputStream;
@@ -26,7 +28,9 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> titles = new ArrayList<>();
     ArrayAdapter<String> arrayAdapter;
     ProgressBar progressBar, loadingSpinner;
+    TextView textView;
     JSONArray articleIDs;
+    final int NUMBER_OF_ARTICLES = 12;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,10 +39,11 @@ public class MainActivity extends AppCompatActivity {
         listView = findViewById(R.id.listView);
         progressBar = findViewById(R.id.progressBar);
         loadingSpinner = findViewById(R.id.loadingSpinner);
+        textView = findViewById(R.id.textView);
         DownloadArticles downloadArticles = new DownloadArticles();
         arrayAdapter =  new ArrayAdapter<>(this, android.R.layout.simple_list_item_1,titles);
         listView.setAdapter(arrayAdapter);
-        progressBar.setMax(20);
+        progressBar.setMax(NUMBER_OF_ARTICLES);
 
         try {
             downloadArticles.execute("https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty");
@@ -60,13 +65,14 @@ public class MainActivity extends AppCompatActivity {
                             // Guaranteed to run on the UI thread
                             progressBar.setVisibility(View.VISIBLE);
                             loadingSpinner.setVisibility(View.VISIBLE);
+                            textView.setVisibility(View.VISIBLE);
                         }
 
                         @Override
                         protected Void doInBackground(Void... params) {
                             Log.i("debug info", "Loading more items...");
                             titles.remove(pos);
-                            loadArticles();
+                            loadArticles(); //get another 20 articles
                             return null;
                         }
 
@@ -76,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
                             // Guaranteed to run on the UI thread
                             progressBar.setVisibility(View.GONE);
                             loadingSpinner.setVisibility(View.GONE);
+                            textView.setVisibility(View.GONE);
 
                         }
 
@@ -121,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
         int dupeIndex=0;
         int badArticles=0;
         try {
-            for (int i = titles.size(); i < titles.size()+20; i++) { //downloads the top 20 stories out of 500 article IDs
+            for (int i = titles.size(); i < titles.size()+NUMBER_OF_ARTICLES; i++) { //downloads the top 20 stories out of 500 article IDs
                 jsonUrl = "https://hacker-news.firebaseio.com/v0/item/" + articleIDs.get(i) + ".json?print=pretty";
                 String json = getJSON(jsonUrl); //gets article data using article ID
                 JSONObject storyData = new JSONObject(json);
@@ -153,14 +160,8 @@ public class MainActivity extends AppCompatActivity {
         titles.add("More stories...");
     }
 
-    //Downloads the top 10 article IDs from a list of 500
+    //Downloads the article IDs from a list of 500
     public class DownloadArticles extends AsyncTask<String, Void, ArrayList<Story>>{
-
-        @Override
-        protected void onPreExecute() {
-            arrayAdapter.notifyDataSetChanged();
-            loadingSpinner.setVisibility(View.VISIBLE);
-        }
 
         @Override
         protected ArrayList<Story> doInBackground(String... strings) {
@@ -182,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
             arrayAdapter.notifyDataSetChanged();
             progressBar.setVisibility(View.GONE);
             loadingSpinner.setVisibility(View.GONE);
+            textView.setVisibility(View.GONE);
         }
     }
 
